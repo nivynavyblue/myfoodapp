@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Restaurant } from "@/types/restaurant";
 import { telHref, whatsappHref } from "@/lib/phone";
 import { isSafeHttpUrl } from "@/lib/url";
+import { initials } from "@/lib/avatar";
 import { useGroups } from "@/context/GroupsContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,16 +56,31 @@ export function RestaurantCard({
     <Card>
       <CardContent className="flex flex-col gap-3 p-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold">
-              {restaurant.name}
-            </h2>
-            {restaurant.address && (
-              <p className="mt-0.5 flex items-start gap-1 text-sm text-muted-foreground">
-                <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{restaurant.address}</span>
-              </p>
-            )}
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border bg-muted">
+              {restaurant.avatar_url ? (
+                <img
+                  src={restaurant.avatar_url}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted-foreground">
+                  {initials(restaurant.name)}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-semibold">
+                {restaurant.name}
+              </h2>
+              {restaurant.address && (
+                <p className="mt-0.5 flex items-start gap-1 text-sm text-muted-foreground">
+                  <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{restaurant.address}</span>
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex shrink-0 gap-1">
             <Button

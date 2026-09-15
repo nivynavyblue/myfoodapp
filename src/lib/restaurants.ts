@@ -2,6 +2,11 @@ import { supabase } from "./supabaseClient";
 import type { Restaurant, RestaurantInput } from "@/types/restaurant";
 import { normalizeUrl } from "./url";
 
+export interface Coords {
+  lat: number;
+  lng: number;
+}
+
 /** Turns a comma-separated tags string into a clean string[]. */
 export function parseTags(raw: string): string[] {
   return raw
@@ -42,7 +47,9 @@ export async function fetchRestaurants(): Promise<Restaurant[]> {
 }
 
 export async function createRestaurant(
-  input: RestaurantInput
+  input: RestaurantInput,
+  coords?: Coords | null,
+  avatarUrl?: string | null
 ): Promise<Restaurant> {
   const {
     data: { user },
@@ -51,7 +58,13 @@ export async function createRestaurant(
 
   const { data, error } = await supabase
     .from("restaurants")
-    .insert({ ...toRow(input), user_id: user.id })
+    .insert({
+      ...toRow(input),
+      user_id: user.id,
+      lat: coords?.lat ?? null,
+      lng: coords?.lng ?? null,
+      avatar_url: avatarUrl ?? null,
+    })
     .select()
     .single();
 
@@ -59,13 +72,29 @@ export async function createRestaurant(
   return data as Restaurant;
 }
 
+/**
+ * `coords`/`avatarUrl`: omit (undefined) to leave the existing value
+ * untouched (e.g. address/avatar didn't change); pass null to clear it,
+ * or a value to overwrite it.
+ */
 export async function updateRestaurant(
   id: string,
-  input: RestaurantInput
+  input: RestaurantInput,
+  coords?: Coords | null,
+  avatarUrl?: string | null
 ): Promise<Restaurant> {
+  const row: Record<string, unknown> = toRow(input);
+  if (coords !== undefined) {
+    row.lat = coords?.lat ?? null;
+    row.lng = coords?.lng ?? null;
+  }
+  if (avatarUrl !== undefined) {
+    row.avatar_url = avatarUrl;
+  }
+
   const { data, error } = await supabase
     .from("restaurants")
-    .update(toRow(input))
+    .update(row)
     .eq("id", id)
     .select()
     .single();

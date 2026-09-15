@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useGroups } from "@/context/GroupsContext";
+import { queryKeys } from "@/lib/queryKeys";
 import type { ActivityEntry, Group, GroupMember } from "@/types/group";
 import {
   createGroup,
@@ -123,41 +125,39 @@ function GroupsList({
   onChanged: () => Promise<void>;
 }) {
   const [name, setName] = useState("");
-  const [creating, setCreating] = useState(false);
   const [code, setCode] = useState("");
-  const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleCreate() {
-    if (!name.trim()) return;
-    setCreating(true);
-    setError(null);
-    try {
-      await createGroup(name.trim());
+  const createMutation = useMutation({
+    mutationFn: (n: string) => createGroup(n),
+    onSuccess: async () => {
       setName("");
       await onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao criar grupo.");
-    } finally {
-      setCreating(false);
-    }
-  }
+    },
+    onError: (err) =>
+      setError(err instanceof Error ? err.message : "Falha ao criar grupo."),
+  });
 
-  async function handleJoin() {
-    if (!code.trim()) return;
-    setJoining(true);
-    setError(null);
-    try {
-      await joinGroupByCode(code.trim());
+  const joinMutation = useMutation({
+    mutationFn: (c: string) => joinGroupByCode(c),
+    onSuccess: async () => {
       setCode("");
       await onChanged();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Código inválido."
-      );
-    } finally {
-      setJoining(false);
-    }
+    },
+    onError: (err) =>
+      setError(err instanceof Error ? err.message : "Código inválido."),
+  });
+
+  function handleCreate() {
+    if (!name.trim()) return;
+    setError(null);
+    createMutation.mutate(name.trim());
+  }
+
+  function handleJoin() {
+    if (!code.trim()) return;
+    setError(null);
+    joinMutation.mutate(code.trim());
   }
 
   return (
@@ -198,8 +198,11 @@ function GroupsList({
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-          <Button onClick={handleCreate} disabled={creating || !name.trim()}>
-            {creating ? "Criando…" : "Criar"}
+          <Button
+            onClick={handleCreate}
+            disabled={createMutation.isPending || !name.trim()}
+          >
+            {createMutation.isPending ? "Criando…" : "Criar"}
           </Button>
         </div>
       </div>
@@ -217,9 +220,9 @@ function GroupsList({
           <Button
             variant="secondary"
             onClick={handleJoin}
-            disabled={joining || !code.trim()}
+            disabled={joinMutation.isPending || !code.trim()}
           >
-            {joining ? "Entrando…" : "Entrar"}
+            {joinMutation.isPending ? "Entrando…" : "Entrar"}
           </Button>
         </div>
       </div>
@@ -243,12 +246,9 @@ function GroupDetail({
   onGroupDeleted: () => Promise<void>;
 }) {
   const { user } = useAuth();
-  const [members, setMembers] = useState<GroupMember[]>([]);
-  const [activity, setActivity] = useState<ActivityEntry[]>([]);
-  const [loadingDetail, setLoadingDetail] = useState(true);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
 
   const [confirm, setConfirm] = useState<
     | { kind: "deleteGroup" }
@@ -256,29 +256,65 @@ function GroupDetail({
     | { kind: "removeMember"; userId: string; email: string }
     | null
   >(null);
-  const [busy, setBusy] = useState(false);
 
-  async function loadDetail() {
-    setLoadingDetail(true);
-    setError(null);
-    try {
-      const [m, a] = await Promise.all([
-        fetchGroupMembers(group.id),
-        fetchGroupActivity(group.id),
-      ]);
-      setMembers(m);
-      setActivity(a);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao carregar grupo.");
-    } finally {
-      setLoadingDetail(false);
-    }
-  }
+  const membersQuery = useQuery({
+    queryKey: queryKeys.groupMembers(group.id),
+    queryFn: () => fetchGroupMembers(group.id),
+  });
 
-  useEffect(() => {
-    loadDetail();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [group.id]);
+  const activityQuery = useQuery({
+    queryKey: queryKeys.groupActivity(group.id),
+    queryFn: () => fetchGroupActivity(group.id),
+  });
+
+  const loadingDetail = membersQuery.isLoading || activityQuery.isLoading;
+  const members: GroupMember[] = membersQuery.data ?? [];
+  const activity: ActivityEntry[] = activityQuery.data ?? [];
+
+  const regenerateMutation = useMutation({
+    mutationFn: () => regenerateJoinCode(group.id),
+    onSuccess: (newCode) => onGroupChanged({ ...group, join_code: newCode }),
+    onError: (err) =>
+      setError(err instanceof Error ? err.message : "Falha ao gerar código."),
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: () => deleteGroup(group.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.restaurants });
+      await onGroupDeleted();
+    },
+    onError: (err) =>
+      setError(err instanceof Error ? err.message : "Falha ao executar ação."),
+  });
+
+  const leaveGroupMutation = useMutation({
+    mutationFn: () => removeMember(group.id, user!.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.restaurants });
+      await onGroupDeleted();
+    },
+    onError: (err) =>
+      setError(err instanceof Error ? err.message : "Falha ao executar ação."),
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: (userId: string) => removeMember(group.id, userId),
+    onSuccess: async () => {
+      setConfirm(null);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.groupMembers(group.id),
+      });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.restaurants });
+    },
+    onError: (err) =>
+      setError(err instanceof Error ? err.message : "Falha ao executar ação."),
+  });
+
+  const busy =
+    deleteGroupMutation.isPending ||
+    leaveGroupMutation.isPending ||
+    removeMemberMutation.isPending;
 
   async function copyCode() {
     try {
@@ -290,43 +326,15 @@ function GroupDetail({
     }
   }
 
-  async function handleRegenerate() {
-    setRegenerating(true);
-    setError(null);
-    try {
-      const newCode = await regenerateJoinCode(group.id);
-      await onGroupChanged({ ...group, join_code: newCode });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao gerar código.");
-    } finally {
-      setRegenerating(false);
-    }
-  }
-
-  async function handleConfirm() {
+  function handleConfirm() {
     if (!confirm) return;
-    setBusy(true);
     setError(null);
-    try {
-      if (confirm.kind === "deleteGroup") {
-        await deleteGroup(group.id);
-        await onGroupDeleted();
-        return;
-      }
-      if (confirm.kind === "leaveGroup" && user) {
-        await removeMember(group.id, user.id);
-        await onGroupDeleted();
-        return;
-      }
-      if (confirm.kind === "removeMember") {
-        await removeMember(group.id, confirm.userId);
-        setConfirm(null);
-        await loadDetail();
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao executar ação.");
-    } finally {
-      setBusy(false);
+    if (confirm.kind === "deleteGroup") {
+      deleteGroupMutation.mutate();
+    } else if (confirm.kind === "leaveGroup") {
+      leaveGroupMutation.mutate();
+    } else if (confirm.kind === "removeMember") {
+      removeMemberMutation.mutate(confirm.userId);
     }
   }
 
@@ -355,8 +363,8 @@ function GroupDetail({
               variant="outline"
               size="icon"
               aria-label="Gerar novo código"
-              onClick={handleRegenerate}
-              disabled={regenerating}
+              onClick={() => regenerateMutation.mutate()}
+              disabled={regenerateMutation.isPending}
             >
               <ArrowPathIcon className="h-5 w-5" />
             </Button>

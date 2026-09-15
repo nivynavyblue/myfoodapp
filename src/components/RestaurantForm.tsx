@@ -1,6 +1,12 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Restaurant } from "@/types/restaurant";
+import type { Coords } from "@/lib/restaurants";
 import { createRestaurant, parseTags, updateRestaurant } from "@/lib/restaurants";
+import { geocodeAddress } from "@/lib/geocode";
+import { deleteAvatar, initials, uploadAvatar } from "@/lib/avatar";
+import { queryKeys } from "@/lib/queryKeys";
+import { useAuth } from "@/context/AuthContext";
 import { useGroups } from "@/context/GroupsContext";
 import {
   Dialog,
@@ -20,13 +26,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CameraIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 interface RestaurantFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Pass a restaurant to edit it, or omit/null to create a new one. */
   restaurant?: Restaurant | null;
-  onSaved: (restaurant: Restaurant) => void;
 }
 
 interface FormState {
@@ -70,12 +76,18 @@ export function RestaurantForm({
   open,
   onOpenChange,
   restaurant,
-  onSaved,
 }: RestaurantFormProps) {
+  const { user } = useAuth();
   const { groups } = useGroups();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(blankForm);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [geocodeWarning, setGeocodeWarning] = useState(false);
+
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarRemoved, setAvatarRemoved] = useState(false);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = Boolean(restaurant);
 
@@ -83,24 +95,46 @@ export function RestaurantForm({
     if (open) {
       setForm(restaurant ? toFormState(restaurant) : blankForm);
       setError(null);
+      setGeocodeWarning(false);
+      setAvatarFile(null);
+      setAvatarRemoved(false);
     }
   }, [open, restaurant]);
+
+  useEffect(() => {
+    if (!avatarFile) {
+      setAvatarPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(avatarFile);
+    setAvatarPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [avatarFile]);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
+  const saveMutation = useMutation({
+    mutationFn: async (): Promise<Restaurant> => {
+      const trimmedAddress = form.address.trim();
+      const addressChanged =
+        !isEditing || (restaurant?.address ?? "") !== trimmedAddress;
 
-    if (!form.name.trim() || !form.phone.trim()) {
-      setError("Nome e telefone são obrigatórios.");
-      return;
-    }
+      let coords: Coords | null | undefined;
+      if (!addressChanged) {
+        coords = undefined;
+      } else if (!trimmedAddress) {
+        coords = null;
+      } else {
+        try {
+          coords = await geocodeAddress(trimmedAddress);
+        } catch {
+          coords = null;
+        }
+        if (!coords) setGeocodeWarning(true);
+      }
 
-    setSubmitting(true);
-    try {
       const input = {
         name: form.name,
         phone: form.phone,
@@ -111,18 +145,60 @@ export function RestaurantForm({
         website: form.website,
         group_id: form.groupId,
       };
-      const saved =
-        isEditing && restaurant
-          ? await updateRestaurant(restaurant.id, input)
-          : await createRestaurant(input);
-      onSaved(saved);
+
+      const previousAvatarUrl = restaurant?.avatar_url ?? null;
+
+      if (isEditing && restaurant) {
+        let avatarUrl: string | null | undefined;
+        if (avatarFile) {
+          avatarUrl = await uploadAvatar(user!.id, restaurant.id, avatarFile);
+        } else if (avatarRemoved) {
+          avatarUrl = null;
+        } else {
+          avatarUrl = undefined;
+        }
+
+        const saved = await updateRestaurant(restaurant.id, input, coords, avatarUrl);
+
+        if ((avatarFile || avatarRemoved) && previousAvatarUrl) {
+          await deleteAvatar(previousAvatarUrl);
+        }
+
+        return saved;
+      }
+
+      const created = await createRestaurant(input, coords, null);
+      if (avatarFile) {
+        const avatarUrl = await uploadAvatar(user!.id, created.id, avatarFile);
+        return updateRestaurant(created.id, input, undefined, avatarUrl);
+      }
+      return created;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.restaurants });
       onOpenChange(false);
-    } catch (err) {
+    },
+    onError: (err) => {
       setError(err instanceof Error ? err.message : "Falha ao salvar.");
-    } finally {
-      setSubmitting(false);
+    },
+  });
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setGeocodeWarning(false);
+
+    if (!form.name.trim() || !form.phone.trim()) {
+      setError("Nome e telefone são obrigatórios.");
+      return;
     }
+
+    saveMutation.mutate();
   }
+
+  const currentAvatarSrc = avatarPreviewUrl
+    ?? (!avatarRemoved ? restaurant?.avatar_url ?? null : null);
+  const hasAvatar = Boolean(avatarFile || (!avatarRemoved && restaurant?.avatar_url));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -137,6 +213,56 @@ export function RestaurantForm({
           onSubmit={handleSubmit}
           className="flex flex-1 flex-col gap-4 overflow-y-auto"
         >
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border bg-muted"
+              aria-label="Escolher foto"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {currentAvatarSrc ? (
+                <img
+                  src={currentAvatarSrc}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-muted-foreground">
+                  {initials(form.name || "?")}
+                </span>
+              )}
+              <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors hover:bg-black/20">
+                <CameraIcon className="h-5 w-5 text-white opacity-0 hover:opacity-100" />
+              </span>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setAvatarFile(file);
+                if (file) setAvatarRemoved(false);
+              }}
+            />
+            {hasAvatar && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setAvatarFile(null);
+                  setAvatarRemoved(true);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+              >
+                <XMarkIcon className="h-4 w-4" />
+                Remover foto
+              </Button>
+            )}
+          </div>
+
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Nome *</Label>
             <Input
@@ -191,6 +317,11 @@ export function RestaurantForm({
               value={form.address}
               onChange={(e) => set("address", e.target.value)}
             />
+            {geocodeWarning && (
+              <p className="text-xs text-muted-foreground">
+                Endereço não localizado no mapa — o restaurante foi salvo normalmente.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -250,8 +381,8 @@ export function RestaurantForm({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? "Salvando…" : "Salvar"}
+            <Button type="submit" disabled={saveMutation.isPending}>
+              {saveMutation.isPending ? "Salvando…" : "Salvar"}
             </Button>
           </DialogFooter>
         </form>

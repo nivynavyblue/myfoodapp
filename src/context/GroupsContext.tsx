@@ -1,14 +1,13 @@
 import {
   createContext,
-  useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
   type ReactNode,
 } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { Group } from "@/types/group";
 import { fetchMyGroups } from "@/lib/groups";
+import { queryKeys } from "@/lib/queryKeys";
 
 interface GroupsContextValue {
   groups: Group[];
@@ -21,21 +20,14 @@ interface GroupsContextValue {
 const GroupsContext = createContext<GroupsContextValue | undefined>(undefined);
 
 export function GroupsProvider({ children }: { children: ReactNode }) {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      setGroups(await fetchMyGroups());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const {
+    data: groups = [],
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.groups,
+    queryFn: fetchMyGroups,
+  });
 
   const nameById = useMemo(
     () => new Map(groups.map((g) => [g.id, g.name])),
@@ -43,8 +35,15 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ groups, loading, nameById, refresh }),
-    [groups, loading, nameById, refresh]
+    () => ({
+      groups,
+      loading: isLoading,
+      nameById,
+      refresh: async () => {
+        await refetch();
+      },
+    }),
+    [groups, isLoading, nameById, refetch]
   );
 
   return (
