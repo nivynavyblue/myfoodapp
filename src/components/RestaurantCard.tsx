@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Restaurant } from "@/types/restaurant";
 import { telHref, whatsappHref } from "@/lib/phone";
+import { isSafeHttpUrl } from "@/lib/url";
 import { useGroups } from "@/context/GroupsContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,6 +35,10 @@ export function RestaurantCard({
   // (per the form's "leave blank if same as phone" hint).
   const whatsappNumber = restaurant.whatsapp || restaurant.phone;
   const groupName = restaurant.group_id ? nameById.get(restaurant.group_id) : null;
+  // Belt-and-suspenders: normalizeUrl() already rejects non-http(s) schemes
+  // on write, but re-check on render too — a row could have been written
+  // directly via the API/SQL, bypassing the app's own validation.
+  const safeWebsite = isSafeHttpUrl(restaurant.website) ? restaurant.website : null;
 
   async function copyPhone() {
     try {
@@ -119,14 +124,14 @@ export function RestaurantCard({
             </a>
           </Button>
 
-          {restaurant.website && (
+          {safeWebsite && (
             <Button
               asChild
               variant="outline"
               size="icon"
               aria-label={`Site de ${restaurant.name}`}
             >
-              <a href={restaurant.website} target="_blank" rel="noreferrer">
+              <a href={safeWebsite} target="_blank" rel="noreferrer">
                 <GlobeAltIcon className="h-5 w-5" />
               </a>
             </Button>

@@ -11,6 +11,14 @@ export function parseTags(raw: string): string[] {
 }
 
 function toRow(input: RestaurantInput) {
+  let website: string | null = null;
+  if (input.website.trim()) {
+    website = normalizeUrl(input.website);
+    if (!website) {
+      throw new Error("Site inválido — use um endereço http(s) válido.");
+    }
+  }
+
   return {
     name: input.name.trim(),
     phone: input.phone.trim(),
@@ -18,7 +26,7 @@ function toRow(input: RestaurantInput) {
     address: input.address.trim() || null,
     tags: input.tags,
     notes: input.notes.trim() || null,
-    website: input.website.trim() ? normalizeUrl(input.website) : null,
+    website,
     group_id: input.group_id,
   };
 }
