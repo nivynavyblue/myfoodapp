@@ -23,7 +23,7 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Delete",
+  confirmLabel = "Excluir",
   onConfirm,
 }: ConfirmDialogProps) {
   return (
@@ -34,7 +34,7 @@ export function ConfirmDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm}>
             {confirmLabel}
           </AlertDialogAction>

@@ -25,12 +25,12 @@ export function AuthScreen() {
       } else {
         const { needsConfirmation } = await signUp(email, password);
         if (needsConfirmation) {
-          setInfo("Check your inbox to confirm your email, then sign in.");
+          setInfo("Verifique seu e-mail para confirmar o cadastro e depois entre.");
           setMode("signin");
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(err instanceof Error ? err.message : "Algo deu errado.");
     } finally {
       setSubmitting(false);
     }
@@ -41,7 +41,7 @@ export function AuthScreen() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">
-            {mode === "signin" ? "Sign in" : "Create account"}
+            {mode === "signin" ? "Entrar" : "Criar conta"}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -59,7 +59,7 @@ export function AuthScreen() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Senha</Label>
               <Input
                 id="password"
                 type="password"
@@ -78,10 +78,10 @@ export function AuthScreen() {
 
             <Button type="submit" size="lg" disabled={submitting}>
               {submitting
-                ? "Please wait…"
+                ? "Aguarde…"
                 : mode === "signin"
-                  ? "Sign in"
-                  : "Sign up"}
+                  ? "Entrar"
+                  : "Cadastrar"}
             </Button>
 
             <button
@@ -94,8 +94,8 @@ export function AuthScreen() {
               }}
             >
               {mode === "signin"
-                ? "No account? Sign up"
-                : "Have an account? Sign in"}
+                ? "Não tem conta? Cadastre-se"
+                : "Já tem conta? Entrar"}
             </button>
           </form>
         </CardContent>

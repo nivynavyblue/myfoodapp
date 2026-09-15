@@ -1,8 +1,10 @@
 # Restaurant Index
 
-Personal, mobile-first PWA to keep a private list of restaurants — call,
-WhatsApp, or copy their number in one tap. React + Vite + TypeScript,
-Tailwind + shadcn/ui, Supabase for auth/data, deployed on Vercel.
+Mobile-first PWA to keep a list of restaurants — call, WhatsApp, order online,
+or copy their number in one tap — personal or shared with a group. React +
+Vite + TypeScript, Tailwind + shadcn/ui, Supabase for auth/data, deployed on
+Vercel. UI text is in Brazilian Portuguese (pt-BR); no i18n library, since
+it's a single-language app.
 
 ## Stack
 
@@ -16,8 +18,10 @@ Tailwind + shadcn/ui, Supabase for auth/data, deployed on Vercel.
 2. **Authentication → Providers**: make sure **Email** is enabled.
 3. **Authentication → Settings**: under "Email Auth", turn **off** "Confirm email" if you want signup to log you straight in (simplest for solo use on your phone). Leave it on if you'd rather verify via email first.
 4. **Authentication → URL Configuration**: set **Site URL** to your future Vercel URL (e.g. `https://your-app.vercel.app`), and add both that URL and `http://localhost:5173` under **Redirect URLs**.
-5. **SQL Editor**: paste the contents of [`supabase/migrations/0001_restaurants.sql`](./supabase/migrations/0001_restaurants.sql) and run it. This creates the `restaurants` table, an `updated_at` trigger, and 4 RLS policies (select/insert/update/delete) scoped to `auth.uid() = user_id`.
-6. **Authentication → Policies**: sanity-check the `restaurants` table shows RLS **enabled** and 4 policies.
+5. **SQL Editor**: run the migrations **in order**:
+   - [`supabase/migrations/0001_restaurants.sql`](./supabase/migrations/0001_restaurants.sql) — creates the `restaurants` table, an `updated_at` trigger, and RLS scoped to `auth.uid() = user_id`.
+   - [`supabase/migrations/0002_groups_and_sharing.sql`](./supabase/migrations/0002_groups_and_sharing.sql) — adds `profiles` (auto-synced with `auth.users` via trigger), `groups`/`group_members` + join-by-code RPCs, a `website` column, and an append-only `restaurant_activity` audit log, then rewrites the `restaurants` RLS policies to allow group-shared access.
+6. **Authentication → Policies**: sanity-check `restaurants`, `groups`, `group_members`, `profiles` and `restaurant_activity` all show RLS **enabled**.
 7. **Project Settings → API**: copy the **Project URL** and **anon public** key — you'll need them next.
 
 ## 2. Configure the frontend
@@ -58,25 +62,28 @@ email/password, and start adding restaurants.
 
 ```
 src/
-  lib/            supabaseClient, restaurants CRUD, phone/WhatsApp link helpers
-  context/        AuthContext (session state via React Context, no Redux)
-  components/     AuthScreen, RestaurantList, RestaurantCard, RestaurantForm, ConfirmDialog
-  components/ui/  shadcn/ui primitives (button, input, dialog, alert-dialog, card, badge, ...)
+  lib/            supabaseClient, restaurants/groups CRUD, phone/WhatsApp/URL helpers
+  context/        AuthContext, GroupsContext (React Context, no Redux)
+  components/     AuthScreen, RestaurantList, RestaurantCard, RestaurantForm,
+                  ConfirmDialog, GroupsScreen (create/join/manage groups)
+  components/ui/  shadcn/ui primitives (button, input, select, dialog, alert-dialog, card, badge, ...)
 supabase/
-  migrations/     SQL for the restaurants table + RLS policies
+  migrations/     SQL for tables, RLS policies, and RPCs
 ```
 
 ## Notes on data model
 
-Each restaurant row belongs to exactly one `user_id`. RLS policies ensure a
-user can only ever `select`/`insert`/`update`/`delete` their own rows — this
-is enforced in Postgres, not just in the UI, so it holds even if someone
-calls the Supabase API directly.
+Each restaurant row belongs to exactly one `user_id`, and optionally to one
+`group_id`. RLS policies enforce all access in Postgres (not just the UI):
 
+- A **personal** restaurant (`group_id` null) is visible/editable only by its `user_id`.
+- A **shared** restaurant (`group_id` set) is visible/editable by any member of that group. Every create/update/delete on it is recorded in `restaurant_activity` (who did what, when) — visible in the group's screen.
+- **Groups**: created via the `create_group` RPC (owner). Others join via a short **join code** (`join_group_by_code` RPC) — no email invites needed. The owner can regenerate the code, remove members, rename, or delete the group; members can leave.
 - **Call**: `tel:` link built from the stored phone number (kept as typed, digits + optional leading `+`).
-- **WhatsApp**: `https://wa.me/<digits>` — the number is stripped to digits only (no `+`, no spaces) as required by wa.me. Enter it with country code, e.g. `+1 555 123 4567`.
+- **WhatsApp**: `https://wa.me/<digits>` — the number is stripped to digits only (no `+`, no spaces) as required by wa.me, falling back to the phone number when the WhatsApp field is left blank. Enter it with country code, e.g. `+55 11 91234 5678`.
+- **Website**: an optional "order online" link — `https://` is added automatically if you type a bare domain.
 - **Copy**: uses `navigator.clipboard.writeText` on the phone field.
-- **Search**: client-side filter over name and tags (table is expected to stay small — a few hundred rows at most for personal use).
+- **Search**: client-side filter over name and tags (table is expected to stay small — a few hundred rows at most for personal/small-group use).
 
 ## Offline behavior
 

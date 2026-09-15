@@ -43,7 +43,7 @@ const DialogContent = React.forwardRef<
       {children}
       <DialogPrimitive.Close className="absolute right-4 top-[calc(1rem+env(safe-area-inset-top))] flex h-11 w-11 items-center justify-center rounded-md opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:top-4">
         <XMarkIcon className="h-6 w-6" />
-        <span className="sr-only">Close</span>
+        <span className="sr-only">Fechar</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPortal>

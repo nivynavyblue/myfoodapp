@@ -31,7 +31,7 @@ export function RestaurantList() {
       const data = await fetchRestaurants();
       setRestaurants(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load.");
+      setError(err instanceof Error ? err.message : "Falha ao carregar.");
     } finally {
       setLoading(false);
     }
@@ -74,7 +74,7 @@ export function RestaurantList() {
       setRestaurants((prev) => prev.filter((r) => r.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete.");
+      setError(err instanceof Error ? err.message : "Falha ao excluir.");
     } finally {
       setDeleting(false);
     }
@@ -86,11 +86,11 @@ export function RestaurantList() {
         <div className="relative">
           <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by name or tag…"
+            placeholder="Buscar por nome ou tag…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="pl-10"
-            aria-label="Search restaurants"
+            aria-label="Buscar restaurantes"
           />
         </div>
       </div>
@@ -99,13 +99,13 @@ export function RestaurantList() {
 
       {loading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          Carregando...
+          Carregando…
         </p>
       ) : filtered.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
           {restaurants.length === 0
-            ? "No restaurants yet. Tap + to add one."
-            : "No matches."}
+            ? "Nenhum restaurante ainda. Toque em + para adicionar."
+            : "Nenhum resultado."}
         </p>
       ) : (
         <div className="flex flex-col gap-3">
@@ -123,7 +123,7 @@ export function RestaurantList() {
       <Button
         size="icon"
         className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-30 h-14 w-14 rounded-full shadow-lg"
-        aria-label="Add restaurant"
+        aria-label="Adicionar restaurante"
         onClick={openAdd}
       >
         <PlusIcon className="h-7 w-7" />
@@ -139,9 +139,9 @@ export function RestaurantList() {
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete restaurant?"
-        description={`This will permanently remove "${deleteTarget?.name ?? ""}". This can't be undone.`}
-        confirmLabel={deleting ? "Deleting…" : "Delete"}
+        title="Excluir restaurante?"
+        description={`Isso vai remover "${deleteTarget?.name ?? ""}" permanentemente. Essa ação não pode ser desfeita.`}
+        confirmLabel={deleting ? "Excluindo…" : "Excluir"}
         onConfirm={handleConfirmDelete}
       />
     </div>

@@ -7,6 +7,10 @@ export interface Restaurant {
   address: string | null;
   tags: string[];
   notes: string | null;
+  /** Ordering site / menu link, e.g. the restaurant's own order-online page. */
+  website: string | null;
+  /** null = personal restaurant; otherwise shared with this group. */
+  group_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -19,6 +23,8 @@ export interface RestaurantInput {
   address: string;
   tags: string[];
   notes: string;
+  website: string;
+  group_id: string | null;
 }
 
 export const emptyRestaurantInput: RestaurantInput = {
@@ -28,4 +34,6 @@ export const emptyRestaurantInput: RestaurantInput = {
   address: "",
   tags: [],
   notes: "",
+  website: "",
+  group_id: null,
 };

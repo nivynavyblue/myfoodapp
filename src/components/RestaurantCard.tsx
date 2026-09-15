@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Restaurant } from "@/types/restaurant";
 import { telHref, whatsappHref } from "@/lib/phone";
+import { useGroups } from "@/context/GroupsContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,8 @@ import {
   PencilIcon,
   TrashIcon,
   MapPinIcon,
+  GlobeAltIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 
 interface RestaurantCardProps {
@@ -25,10 +28,12 @@ export function RestaurantCard({
   onEdit,
   onDelete,
 }: RestaurantCardProps) {
+  const { nameById } = useGroups();
   const [copied, setCopied] = useState(false);
   // WhatsApp number falls back to the phone number when left blank
   // (per the form's "leave blank if same as phone" hint).
   const whatsappNumber = restaurant.whatsapp || restaurant.phone;
+  const groupName = restaurant.group_id ? nameById.get(restaurant.group_id) : null;
 
   async function copyPhone() {
     try {
@@ -60,7 +65,7 @@ export function RestaurantCard({
             <Button
               variant="ghost"
               size="icon"
-              aria-label={`Edit ${restaurant.name}`}
+              aria-label={`Editar ${restaurant.name}`}
               onClick={() => onEdit(restaurant)}
             >
               <PencilIcon className="h-5 w-5" />
@@ -68,7 +73,7 @@ export function RestaurantCard({
             <Button
               variant="ghost"
               size="icon"
-              aria-label={`Delete ${restaurant.name}`}
+              aria-label={`Excluir ${restaurant.name}`}
               onClick={() => onDelete(restaurant)}
             >
               <TrashIcon className="h-5 w-5" />
@@ -76,8 +81,14 @@ export function RestaurantCard({
           </div>
         </div>
 
-        {restaurant.tags.length > 0 && (
+        {(groupName || restaurant.tags.length > 0) && (
           <div className="flex flex-wrap gap-1.5">
+            {groupName && (
+              <Badge variant="outline" className="gap-1">
+                <UserGroupIcon className="h-3 w-3" />
+                {groupName}
+              </Badge>
+            )}
             {restaurant.tags.map((tag) => (
               <Badge key={tag}>{tag}</Badge>
             ))}
@@ -90,9 +101,9 @@ export function RestaurantCard({
 
         <div className="flex flex-wrap gap-2 pt-1">
           <Button asChild size="default" className="flex-1 min-w-[8rem]">
-            <a href={telHref(restaurant.phone)} aria-label={`Call ${restaurant.name}`}>
+            <a href={telHref(restaurant.phone)} aria-label={`Ligar para ${restaurant.name}`}>
               <PhoneIcon className="h-5 w-5" />
-              Call
+              Ligar
             </a>
           </Button>
 
@@ -101,17 +112,30 @@ export function RestaurantCard({
               href={whatsappHref(whatsappNumber)}
               target="_blank"
               rel="noreferrer"
-              aria-label={`WhatsApp ${restaurant.name}`}
+              aria-label={`WhatsApp de ${restaurant.name}`}
             >
               <ChatBubbleLeftRightIcon className="h-5 w-5" />
               WhatsApp
             </a>
           </Button>
 
+          {restaurant.website && (
+            <Button
+              asChild
+              variant="outline"
+              size="icon"
+              aria-label={`Site de ${restaurant.name}`}
+            >
+              <a href={restaurant.website} target="_blank" rel="noreferrer">
+                <GlobeAltIcon className="h-5 w-5" />
+              </a>
+            </Button>
+          )}
+
           <Button
             variant="outline"
             size="icon"
-            aria-label={`Copy phone number for ${restaurant.name}`}
+            aria-label={`Copiar telefone de ${restaurant.name}`}
             onClick={copyPhone}
           >
             {copied ? (

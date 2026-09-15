@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import type { Restaurant, RestaurantInput } from "@/types/restaurant";
+import { normalizeUrl } from "./url";
 
 /** Turns a comma-separated tags string into a clean string[]. */
 export function parseTags(raw: string): string[] {
@@ -17,6 +18,8 @@ function toRow(input: RestaurantInput) {
     address: input.address.trim() || null,
     tags: input.tags,
     notes: input.notes.trim() || null,
+    website: input.website.trim() ? normalizeUrl(input.website) : null,
+    group_id: input.group_id,
   };
 }
 
