@@ -26,6 +26,9 @@ export function RestaurantCard({
   onDelete,
 }: RestaurantCardProps) {
   const [copied, setCopied] = useState(false);
+  // WhatsApp number falls back to the phone number when left blank
+  // (per the form's "leave blank if same as phone" hint).
+  const whatsappNumber = restaurant.whatsapp || restaurant.phone;
 
   async function copyPhone() {
     try {
@@ -93,23 +96,17 @@ export function RestaurantCard({
             </a>
           </Button>
 
-          {restaurant.whatsapp && (
-            <Button
-              asChild
-              variant="secondary"
-              className="flex-1 min-w-[8rem]"
+          <Button asChild variant="secondary" className="flex-1 min-w-[8rem]">
+            <a
+              href={whatsappHref(whatsappNumber)}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`WhatsApp ${restaurant.name}`}
             >
-              <a
-                href={whatsappHref(restaurant.whatsapp)}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={`WhatsApp ${restaurant.name}`}
-              >
-                <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                WhatsApp
-              </a>
-            </Button>
-          )}
+              <ChatBubbleLeftRightIcon className="h-5 w-5" />
+              WhatsApp
+            </a>
+          </Button>
 
           <Button
             variant="outline"

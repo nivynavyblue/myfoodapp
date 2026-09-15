@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Restaurant } from "@/types/restaurant";
-import {
-  deleteRestaurant,
-  fetchRestaurants,
-} from "@/lib/restaurants";
+import { deleteRestaurant, fetchRestaurants } from "@/lib/restaurants";
 import { RestaurantCard } from "@/components/RestaurantCard";
 import { RestaurantForm } from "@/components/RestaurantForm";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -102,7 +99,7 @@ export function RestaurantList() {
 
       {loading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          Loading…
+          Carregando...
         </p>
       ) : filtered.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
