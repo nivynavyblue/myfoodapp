@@ -2,9 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { DayHours, OpeningHours, Restaurant } from "@/types/restaurant";
 import { DAY_NAMES } from "@/lib/hours";
-import type { Coords } from "@/lib/restaurants";
 import { createRestaurant, parseTags, updateRestaurant } from "@/lib/restaurants";
-import { geocodeAddress } from "@/lib/geocode";
 import { deleteAvatar, initials, uploadAvatar } from "@/lib/avatar";
 import { queryKeys } from "@/lib/queryKeys";
 import { useAuth } from "@/context/AuthContext";
@@ -87,7 +85,6 @@ export function RestaurantForm({
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(blankForm);
   const [error, setError] = useState<string | null>(null);
-  const [geocodeWarning, setGeocodeWarning] = useState(false);
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarRemoved, setAvatarRemoved] = useState(false);
@@ -100,7 +97,6 @@ export function RestaurantForm({
     if (open) {
       setForm(restaurant ? toFormState(restaurant) : blankForm);
       setError(null);
-      setGeocodeWarning(false);
       setAvatarFile(null);
       setAvatarRemoved(false);
     }
@@ -152,24 +148,6 @@ export function RestaurantForm({
 
   const saveMutation = useMutation({
     mutationFn: async (): Promise<Restaurant> => {
-      const trimmedAddress = form.address.trim();
-      const addressChanged =
-        !isEditing || (restaurant?.address ?? "") !== trimmedAddress;
-
-      let coords: Coords | null | undefined;
-      if (!addressChanged) {
-        coords = undefined;
-      } else if (!trimmedAddress) {
-        coords = null;
-      } else {
-        try {
-          coords = await geocodeAddress(trimmedAddress);
-        } catch {
-          coords = null;
-        }
-        if (!coords) setGeocodeWarning(true);
-      }
-
       const input = {
         name: form.name,
         phone: form.phone,
@@ -194,7 +172,7 @@ export function RestaurantForm({
           avatarUrl = undefined;
         }
 
-        const saved = await updateRestaurant(restaurant.id, input, coords, avatarUrl);
+        const saved = await updateRestaurant(restaurant.id, input, avatarUrl);
 
         if ((avatarFile || avatarRemoved) && previousAvatarUrl) {
           await deleteAvatar(previousAvatarUrl);
@@ -203,10 +181,10 @@ export function RestaurantForm({
         return saved;
       }
 
-      const created = await createRestaurant(input, coords, null);
+      const created = await createRestaurant(input, null);
       if (avatarFile) {
         const avatarUrl = await uploadAvatar(user!.id, created.id, avatarFile);
-        return updateRestaurant(created.id, input, undefined, avatarUrl);
+        return updateRestaurant(created.id, input, avatarUrl);
       }
       return created;
     },
@@ -222,7 +200,6 @@ export function RestaurantForm({
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setGeocodeWarning(false);
 
     if (!form.name.trim()) {
       setError("Nome é obrigatório.");
@@ -370,11 +347,6 @@ export function RestaurantForm({
               value={form.address}
               onChange={(e) => set("address", e.target.value)}
             />
-            {geocodeWarning && (
-              <p className="text-xs text-muted-foreground">
-                Endereço não localizado no mapa — o restaurante foi salvo normalmente.
-              </p>
-            )}
           </div>
 
           <fieldset className="flex flex-col gap-2">

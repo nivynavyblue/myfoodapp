@@ -3,7 +3,12 @@ import type { Restaurant } from "@/types/restaurant";
 import { telHref, whatsappHref } from "@/lib/phone";
 import { isSafeHttpUrl } from "@/lib/url";
 import { initials } from "@/lib/avatar";
-import { hasAnyHours, isOpenNow, summarizeHours, todayHours } from "@/lib/hours";
+import {
+  hasAnyHours,
+  isOpenNow,
+  summarizeHours,
+  todayHours,
+} from "@/lib/hours";
 import { useGroups } from "@/context/GroupsContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,11 +42,15 @@ export function RestaurantCard({
   // WhatsApp number falls back to the phone number when left blank
   // (per the form's "leave blank if same as phone" hint).
   const whatsappNumber = restaurant.whatsapp || restaurant.phone;
-  const groupName = restaurant.group_id ? nameById.get(restaurant.group_id) : null;
+  const groupName = restaurant.group_id
+    ? nameById.get(restaurant.group_id)
+    : null;
   // Belt-and-suspenders: normalizeUrl() already rejects non-http(s) schemes
   // on write, but re-check on render too — a row could have been written
   // directly via the API/SQL, bypassing the app's own validation.
-  const safeWebsite = isSafeHttpUrl(restaurant.website) ? restaurant.website : null;
+  const safeWebsite = isSafeHttpUrl(restaurant.website)
+    ? restaurant.website
+    : null;
 
   const hasHours = hasAnyHours(restaurant.opening_hours);
   const openNow = hasHours && isOpenNow(restaurant.opening_hours);
@@ -130,7 +139,10 @@ export function RestaurantCard({
         {hasHours && (
           <div className="flex flex-col gap-1 text-sm">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={openNow ? "default" : "outline"} className="gap-1">
+              <Badge
+                variant={openNow ? "default" : "outline"}
+                className="gap-1"
+              >
                 <ClockIcon className="h-3 w-3" />
                 {openNow ? "Aberto agora" : "Fechado"}
               </Badge>
@@ -139,7 +151,9 @@ export function RestaurantCard({
               </span>
             </div>
             <details className="text-muted-foreground">
-              <summary className="cursor-pointer select-none">Ver horários</summary>
+              <summary className="cursor-pointer select-none">
+                Ver horários
+              </summary>
               <ul className="mt-1">
                 {summarizeHours(restaurant.opening_hours).map((line) => (
                   <li key={line}>{line}</li>
@@ -165,17 +179,12 @@ export function RestaurantCard({
           )}
 
           {restaurant.phone && (
-            <Button
-              asChild
-              variant={safeWebsite ? "outline" : "default"}
-              size="sm"
-              className="flex-1 min-w-[5rem]"
-            >
+            <Button asChild variant="secondary" className="flex-1 min-w-[8rem]">
               <a
                 href={telHref(restaurant.phone)}
                 aria-label={`Ligar para ${restaurant.name}`}
               >
-                <PhoneIcon className="h-4 w-4" />
+                <PhoneIcon className="h-5 w-5" />
                 Ligar
               </a>
             </Button>

@@ -22,8 +22,9 @@ it's a single-language app.
    - [`supabase/migrations/0001_restaurants.sql`](./supabase/migrations/0001_restaurants.sql) — creates the `restaurants` table, an `updated_at` trigger, and RLS scoped to `auth.uid() = user_id`.
    - [`supabase/migrations/0002_groups_and_sharing.sql`](./supabase/migrations/0002_groups_and_sharing.sql) — adds `profiles` (auto-synced with `auth.users` via trigger), `groups`/`group_members` + join-by-code RPCs, a `website` column, and an append-only `restaurant_activity` audit log, then rewrites the `restaurants` RLS policies to allow group-shared access.
    - [`supabase/migrations/0003_website_scheme_check.sql`](./supabase/migrations/0003_website_scheme_check.sql) — DB-level check constraint rejecting non-`http(s)` schemes in `website` (defense-in-depth against a `javascript:`/`data:` URL ever being stored, e.g. via direct API access bypassing the app's own validation).
-   - `0004`–`0005` — geocoding columns (`lat`/`lng`) and restaurant avatars (`avatar_url` + storage bucket).
+   - `0004`–`0005` — geocoding columns (`lat`/`lng`, dropped again in `0007`) and restaurant avatars (`avatar_url` + storage bucket).
    - [`supabase/migrations/0006_hours_optional_phone.sql`](./supabase/migrations/0006_hours_optional_phone.sql) — makes `phone` nullable and adds the `opening_hours` jsonb column.
+   - [`supabase/migrations/0007_drop_geocoding.sql`](./supabase/migrations/0007_drop_geocoding.sql) — drops the unused `lat`/`lng` columns (the location/region grouping feature was removed).
 6. **Authentication → Policies**: sanity-check `restaurants`, `groups`, `group_members`, `profiles` and `restaurant_activity` all show RLS **enabled**.
 7. **Project Settings → API**: copy the **Project URL** and **anon public** key — you'll need them next.
 

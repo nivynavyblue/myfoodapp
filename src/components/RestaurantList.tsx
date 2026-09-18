@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Restaurant } from "@/types/restaurant";
 import { deleteRestaurant, fetchRestaurants } from "@/lib/restaurants";
-import { clusterByProximity } from "@/lib/geo";
 import { hasAnyHours, isOpenNow } from "@/lib/hours";
 import { queryKeys } from "@/lib/queryKeys";
 import { useGroups } from "@/context/GroupsContext";
@@ -18,19 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MagnifyingGlassIcon, MapIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon, PlusIcon } from "@heroicons/react/24/outline";
 
 const ALL_VALUE = "__all__";
 const PRIVATE_VALUE = "__private__";
 const OPEN_VALUE = "open";
 const CLOSED_VALUE = "closed";
-
-const RADIUS_OPTIONS = [
-  { value: "0.5", label: "500 m" },
-  { value: "1", label: "1 km" },
-  { value: "2", label: "2 km" },
-  { value: "5", label: "5 km" },
-];
 
 export function RestaurantList() {
   const queryClient = useQueryClient();
@@ -39,8 +31,6 @@ export function RestaurantList() {
   const [query, setQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState(ALL_VALUE);
   const [openFilter, setOpenFilter] = useState(ALL_VALUE);
-  const [view, setView] = useState<"list" | "region">("list");
-  const [radiusKm, setRadiusKm] = useState("1");
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Restaurant | null>(null);
@@ -87,11 +77,6 @@ export function RestaurantList() {
       return matchesQuery && matchesGroup && matchesOpen;
     });
   }, [restaurants, query, groupFilter, openFilter]);
-
-  const { clusters, unlocated } = useMemo(
-    () => clusterByProximity(filtered, parseFloat(radiusKm)),
-    [filtered, radiusKm]
-  );
 
   function openAdd() {
     setEditing(null);
@@ -150,32 +135,7 @@ export function RestaurantList() {
               <SelectItem value={CLOSED_VALUE}>Fechados</SelectItem>
             </SelectContent>
           </Select>
-
-          <Button
-            variant={view === "region" ? "default" : "outline"}
-            size="icon"
-            aria-label={view === "region" ? "Ver como lista" : "Ver por região"}
-            aria-pressed={view === "region"}
-            onClick={() => setView((v) => (v === "list" ? "region" : "list"))}
-          >
-            <MapIcon className="h-5 w-5" />
-          </Button>
         </div>
-
-        {view === "region" && (
-          <Select value={radiusKm} onValueChange={setRadiusKm}>
-            <SelectTrigger className="w-auto min-w-[7rem]" aria-label="Raio de agrupamento">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {RADIUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -190,7 +150,7 @@ export function RestaurantList() {
             ? "Nenhum restaurante ainda. Toque em + para adicionar."
             : "Nenhum resultado."}
         </p>
-      ) : view === "list" ? (
+      ) : (
         <div className="flex flex-col gap-3">
           {filtered.map((restaurant) => (
             <RestaurantCard
@@ -200,42 +160,6 @@ export function RestaurantList() {
               onDelete={setDeleteTarget}
             />
           ))}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-6">
-          {clusters.map((cluster, i) => (
-            <div key={i} className="flex flex-col gap-3">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                {cluster.restaurants.length}{" "}
-                {cluster.restaurants.length === 1 ? "restaurante" : "restaurantes"}
-                {cluster.label ? ` perto de ${cluster.label}` : ""}
-              </h3>
-              {cluster.restaurants.map((restaurant) => (
-                <RestaurantCard
-                  key={restaurant.id}
-                  restaurant={restaurant}
-                  onEdit={openEdit}
-                  onDelete={setDeleteTarget}
-                />
-              ))}
-            </div>
-          ))}
-
-          {unlocated.length > 0 && (
-            <div className="flex flex-col gap-3">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Sem localização
-              </h3>
-              {unlocated.map((restaurant) => (
-                <RestaurantCard
-                  key={restaurant.id}
-                  restaurant={restaurant}
-                  onEdit={openEdit}
-                  onDelete={setDeleteTarget}
-                />
-              ))}
-            </div>
-          )}
         </div>
       )}
 

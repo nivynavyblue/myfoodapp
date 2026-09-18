@@ -17,9 +17,6 @@ export interface Restaurant {
   website: string | null;
   /** null = personal restaurant; otherwise shared with this group. */
   group_id: string | null;
-  /** Geocoded from `address`; null when ungeocoded/unavailable — always optional. */
-  lat: number | null;
-  lng: number | null;
   /** Custom-uploaded avatar image URL; null falls back to an initials avatar. */
   avatar_url: string | null;
   opening_hours: OpeningHours | null;
