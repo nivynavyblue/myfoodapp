@@ -102,8 +102,8 @@ export function RestaurantList() {
   return (
     <div className="flex flex-col gap-4">
       <div className="sticky top-14 z-20 -mx-4 flex flex-col gap-2 bg-background/95 px-4 py-2 backdrop-blur">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap gap-2">
+          <div className="relative w-full sm:w-auto sm:flex-1">
             <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Buscar por nome ou tag…"
@@ -116,7 +116,7 @@ export function RestaurantList() {
 
           {groups.length > 0 && (
             <Select value={groupFilter} onValueChange={setGroupFilter}>
-              <SelectTrigger className="w-auto min-w-[8rem]" aria-label="Filtrar por grupo">
+              <SelectTrigger className="w-auto min-w-[8rem] flex-1 sm:flex-none" aria-label="Filtrar por grupo">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -132,7 +132,7 @@ export function RestaurantList() {
           )}
 
           <Select value={openFilter} onValueChange={setOpenFilter}>
-            <SelectTrigger className="w-auto min-w-[8rem]" aria-label="Filtrar por horário">
+            <SelectTrigger className="w-auto min-w-[8rem] flex-1 sm:flex-none" aria-label="Filtrar por horário">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
