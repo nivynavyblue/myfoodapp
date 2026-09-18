@@ -13,9 +13,11 @@ import { useGroups } from "@/context/GroupsContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { RestaurantComments } from "@/components/RestaurantComments";
 import {
   PhoneIcon,
   ChatBubbleLeftRightIcon,
+  ChatBubbleOvalLeftIcon,
   ClipboardIcon,
   ClipboardDocumentCheckIcon,
   ClockIcon,
@@ -30,16 +32,19 @@ interface RestaurantCardProps {
   restaurant: Restaurant;
   onEdit: (restaurant: Restaurant) => void;
   onDelete: (restaurant: Restaurant) => void;
+  commentCount?: number;
 }
 
 export function RestaurantCard({
   restaurant,
   onEdit,
   onDelete,
+  commentCount = 0,
 }: RestaurantCardProps) {
   const { nameById, canEdit } = useGroups();
   const editable = canEdit(restaurant.group_id);
   const [copied, setCopied] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   // WhatsApp number falls back to the phone number when left blank
   // (per the form's "leave blank if same as phone" hint).
   const whatsappNumber = restaurant.whatsapp || restaurant.phone;
@@ -221,7 +226,24 @@ export function RestaurantCard({
               )}
             </Button>
           )}
+
+          {restaurant.group_id && (
+            <Button
+              variant="outline"
+              className="gap-1.5"
+              aria-expanded={commentsOpen}
+              onClick={() => setCommentsOpen((o) => !o)}
+            >
+              <ChatBubbleOvalLeftIcon className="h-5 w-5" />
+              {commentsOpen ? "Ocultar comentários" : "Mostrar comentários"} (
+              {commentCount})
+            </Button>
+          )}
         </div>
+
+        {restaurant.group_id && commentsOpen && (
+          <RestaurantComments restaurantId={restaurant.id} />
+        )}
       </CardContent>
     </Card>
   );

@@ -52,7 +52,7 @@ export async function regenerateJoinCode(groupId: string): Promise<string> {
 }
 
 /** Maps a set of user ids to their profiles via the `profiles` table. */
-async function fetchProfiles(userIds: string[]): Promise<Map<string, Profile>> {
+export async function fetchProfiles(userIds: string[]): Promise<Map<string, Profile>> {
   if (userIds.length === 0) return new Map();
   const { data, error } = await supabase
     .from("profiles")

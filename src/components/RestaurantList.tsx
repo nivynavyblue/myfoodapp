@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Restaurant } from "@/types/restaurant";
 import { deleteRestaurant, fetchRestaurants } from "@/lib/restaurants";
+import { fetchCommentCounts } from "@/lib/comments";
 import { hasAnyHours, isOpenNow } from "@/lib/hours";
 import { queryKeys } from "@/lib/queryKeys";
 import { useGroups } from "@/context/GroupsContext";
@@ -46,6 +47,11 @@ export function RestaurantList() {
     queryFn: fetchRestaurants,
   });
   const error = queryError instanceof Error ? queryError.message : null;
+
+  const { data: commentCounts } = useQuery({
+    queryKey: queryKeys.commentCounts,
+    queryFn: fetchCommentCounts,
+  });
 
   const deleteMutation = useMutation({
     mutationFn: deleteRestaurant,
@@ -158,6 +164,7 @@ export function RestaurantList() {
               restaurant={restaurant}
               onEdit={openEdit}
               onDelete={setDeleteTarget}
+              commentCount={commentCounts?.get(restaurant.id) ?? 0}
             />
           ))}
         </div>
