@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Setup
 - `cp .env.example .env`. `.env.example` holds real Supabase project values on purpose; the anon key is public, so RLS is the only access barrier.
-- No Supabase CLI. Apply `supabase/migrations/0001..0007` manually, in order, in the Supabase SQL Editor. README lists 0001-0007.
+- No Supabase CLI. Apply `supabase/migrations/0001..0008` manually, in order, in the Supabase SQL Editor. README lists 0001-0008.
 
 ## Conventions
 - UI strings are hardcoded pt-BR (no i18n library). Write new UI text in pt-BR.

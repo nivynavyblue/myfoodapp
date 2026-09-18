@@ -25,6 +25,7 @@ it's a single-language app.
    - `0004`–`0005` — geocoding columns (`lat`/`lng`, dropped again in `0007`) and restaurant avatars (`avatar_url` + storage bucket).
    - [`supabase/migrations/0006_hours_optional_phone.sql`](./supabase/migrations/0006_hours_optional_phone.sql) — makes `phone` nullable and adds the `opening_hours` jsonb column.
    - [`supabase/migrations/0007_drop_geocoding.sql`](./supabase/migrations/0007_drop_geocoding.sql) — drops the unused `lat`/`lng` columns (the location/region grouping feature was removed).
+   - [`supabase/migrations/0008_security_hardening.sql`](./supabase/migrations/0008_security_hardening.sql) — pins `set_updated_at` search_path, revokes `anon` EXECUTE on the SECURITY DEFINER functions, and replaces the public avatar-bucket SELECT policy with an owner-scoped one (no listing).
 6. **Authentication → Policies**: sanity-check `restaurants`, `groups`, `group_members`, `profiles` and `restaurant_activity` all show RLS **enabled**.
 7. **Project Settings → API**: copy the **Project URL** and **anon public** key — you'll need them next.
 
