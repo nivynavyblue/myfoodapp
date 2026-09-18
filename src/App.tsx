@@ -4,6 +4,12 @@ import { GroupsProvider } from "@/context/GroupsContext";
 import { AuthScreen } from "@/components/AuthScreen";
 import { RestaurantList } from "@/components/RestaurantList";
 import { GroupsScreen } from "@/components/GroupsScreen";
+import { ProfileDialog } from "@/components/ProfileDialog";
+import { UserAvatar } from "@/components/UserAvatar";
+import { useQuery } from "@tanstack/react-query";
+import { fetchMyProfile } from "@/lib/profile";
+import { queryKeys } from "@/lib/queryKeys";
+import { profileLabel } from "@/types/profile";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRightStartOnRectangleIcon,
@@ -13,6 +19,12 @@ import {
 export default function App() {
   const { user, loading, signOut } = useAuth();
   const [groupsOpen, setGroupsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const { data: profile } = useQuery({
+    queryKey: queryKeys.profile,
+    queryFn: () => fetchMyProfile(user!.id),
+    enabled: !!user,
+  });
 
   if (loading) {
     return (
@@ -33,6 +45,18 @@ export default function App() {
           <div className="container flex h-14 items-center justify-between">
             <h1 className="text-lg font-semibold">Restaurantes</h1>
             <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Meu perfil"
+                onClick={() => setProfileOpen(true)}
+              >
+                <UserAvatar
+                  name={profile ? profileLabel(profile) : "?"}
+                  url={profile?.avatar_url}
+                  className="h-8 w-8"
+                />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -57,6 +81,7 @@ export default function App() {
         </main>
 
         <GroupsScreen open={groupsOpen} onOpenChange={setGroupsOpen} />
+        <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
       </div>
     </GroupsProvider>
   );

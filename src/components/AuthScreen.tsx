@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -10,6 +11,8 @@ export function AuthScreen() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -23,7 +26,10 @@ export function AuthScreen() {
       if (mode === "signin") {
         await signIn(email, password);
       } else {
-        const { needsConfirmation } = await signUp(email, password);
+        const { needsConfirmation } = await signUp(email, password, {
+          displayName,
+          bio,
+        });
         if (needsConfirmation) {
           setInfo("Verifique seu e-mail para confirmar o cadastro e depois entre.");
           setMode("signin");
@@ -72,6 +78,32 @@ export function AuthScreen() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
+
+            {mode === "signup" && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="displayName">Nome (opcional)</Label>
+                  <Input
+                    id="displayName"
+                    autoComplete="name"
+                    maxLength={60}
+                    placeholder="Se vazio, usamos seu e-mail"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="bio">Sobre você (opcional)</Label>
+                  <Textarea
+                    id="bio"
+                    rows={2}
+                    maxLength={280}
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
 
             {error && <p className="text-sm text-destructive">{error}</p>}
             {info && <p className="text-sm text-muted-foreground">{info}</p>}

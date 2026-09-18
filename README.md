@@ -26,6 +26,7 @@ it's a single-language app.
    - [`supabase/migrations/0006_hours_optional_phone.sql`](./supabase/migrations/0006_hours_optional_phone.sql) — makes `phone` nullable and adds the `opening_hours` jsonb column.
    - [`supabase/migrations/0007_drop_geocoding.sql`](./supabase/migrations/0007_drop_geocoding.sql) — drops the unused `lat`/`lng` columns (the location/region grouping feature was removed).
    - [`supabase/migrations/0008_security_hardening.sql`](./supabase/migrations/0008_security_hardening.sql) — pins `set_updated_at` search_path, revokes `anon` EXECUTE on the SECURITY DEFINER functions, and replaces the public avatar-bucket SELECT policy with an owner-scoped one (no listing).
+   - [`supabase/migrations/0009_roles_and_profiles.sql`](./supabase/migrations/0009_roles_and_profiles.sql) — group roles `owner`/`editor`/`member` (only owner/editor can add, edit or delete a group's restaurants; existing members become editors, new joiners are read-only members; owner changes roles via `set_member_role`), plus profile `display_name`/`avatar_url`/`bio` (existing accounts default the name to the email prefix) and a `user-avatars` storage bucket.
 6. **Authentication → Policies**: sanity-check `restaurants`, `groups`, `group_members`, `profiles` and `restaurant_activity` all show RLS **enabled**.
 7. **Project Settings → API**: copy the **Project URL** and **anon public** key — you'll need them next.
 

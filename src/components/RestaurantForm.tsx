@@ -81,7 +81,9 @@ export function RestaurantForm({
   restaurant,
 }: RestaurantFormProps) {
   const { user } = useAuth();
-  const { groups } = useGroups();
+  const { groups: allGroups, canEdit } = useGroups();
+  // Only groups where I can edit are valid targets (RLS enforces this too).
+  const groups = allGroups.filter((g) => canEdit(g.id));
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(blankForm);
   const [error, setError] = useState<string | null>(null);

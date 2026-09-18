@@ -37,7 +37,8 @@ export function RestaurantCard({
   onEdit,
   onDelete,
 }: RestaurantCardProps) {
-  const { nameById } = useGroups();
+  const { nameById, canEdit } = useGroups();
+  const editable = canEdit(restaurant.group_id);
   const [copied, setCopied] = useState(false);
   // WhatsApp number falls back to the phone number when left blank
   // (per the form's "leave blank if same as phone" hint).
@@ -98,24 +99,26 @@ export function RestaurantCard({
               )}
             </div>
           </div>
-          <div className="flex shrink-0 gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Editar ${restaurant.name}`}
-              onClick={() => onEdit(restaurant)}
-            >
-              <PencilIcon className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Excluir ${restaurant.name}`}
-              onClick={() => onDelete(restaurant)}
-            >
-              <TrashIcon className="h-5 w-5" />
-            </Button>
-          </div>
+          {editable && (
+            <div className="flex shrink-0 gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Editar ${restaurant.name}`}
+                onClick={() => onEdit(restaurant)}
+              >
+                <PencilIcon className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Excluir ${restaurant.name}`}
+                onClick={() => onDelete(restaurant)}
+              >
+                <TrashIcon className="h-5 w-5" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {(groupName || restaurant.tags.length > 0) && (

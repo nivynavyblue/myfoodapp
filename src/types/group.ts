@@ -6,11 +6,15 @@ export interface Group {
   created_at: string;
 }
 
+export type GroupRole = "owner" | "editor" | "member";
+
 export interface GroupMember {
   group_id: string;
   user_id: string;
   email: string;
-  role: "owner" | "member";
+  display_name: string | null;
+  avatar_url: string | null;
+  role: GroupRole;
   joined_at: string;
 }
 
@@ -23,6 +27,6 @@ export interface ActivityEntry {
   restaurant_name: string;
   action: ActivityAction;
   actor_id: string;
-  actor_email: string;
+  actor_name: string;
   created_at: string;
 }

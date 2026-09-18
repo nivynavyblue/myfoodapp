@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useGroups } from "@/context/GroupsContext";
 import { queryKeys } from "@/lib/queryKeys";
-import type { ActivityEntry, Group, GroupMember } from "@/types/group";
+import type { ActivityEntry, Group, GroupMember, GroupRole } from "@/types/group";
 import {
   createGroup,
   deleteGroup,
@@ -12,6 +12,7 @@ import {
   joinGroupByCode,
   regenerateJoinCode,
   removeMember,
+  setMemberRole,
 } from "@/lib/groups";
 import {
   Dialog,
@@ -23,6 +24,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { UserAvatar } from "@/components/UserAvatar";
+import { profileLabel } from "@/types/profile";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   ArrowLeftIcon,
@@ -52,6 +62,12 @@ function formatWhen(iso: string): string {
     minute: "2-digit",
   });
 }
+
+const ROLE_LABEL: Record<GroupRole, string> = {
+  owner: "Dono",
+  editor: "Editor",
+  member: "Membro",
+};
 
 export function GroupsScreen({ open, onOpenChange }: GroupsScreenProps) {
   const { user } = useAuth();
@@ -278,6 +294,22 @@ function GroupDetail({
       setError(err instanceof Error ? err.message : "Falha ao gerar código."),
   });
 
+  const roleMutation = useMutation({
+    mutationFn: ({
+      userId,
+      role,
+    }: {
+      userId: string;
+      role: "editor" | "member";
+    }) => setMemberRole(group.id, userId, role),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.groupMembers(group.id),
+      }),
+    onError: (err) =>
+      setError(err instanceof Error ? err.message : "Falha ao alterar papel."),
+  });
+
   const deleteGroupMutation = useMutation({
     mutationFn: () => deleteGroup(group.id),
     onSuccess: async () => {
@@ -386,24 +418,52 @@ function GroupDetail({
                 key={m.user_id}
                 className="flex items-center justify-between gap-2 rounded-md border px-3 py-2"
               >
-                <div className="min-w-0">
-                  <p className="truncate text-sm">{m.email}</p>
+                <div className="flex min-w-0 items-center gap-2">
+                  <UserAvatar
+                    name={profileLabel(m)}
+                    url={m.avatar_url}
+                    className="h-8 w-8"
+                  />
+                  <p className="truncate text-sm">{profileLabel(m)}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <Badge variant={m.role === "owner" ? "default" : "outline"}>
-                    {m.role === "owner" ? "Dono" : "Membro"}
-                  </Badge>
+                  {isOwner && m.role !== "owner" ? (
+                    <Select
+                      value={m.role}
+                      onValueChange={(role) =>
+                        roleMutation.mutate({
+                          userId: m.user_id,
+                          role: role as "editor" | "member",
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        className="h-9 w-32"
+                        aria-label={`Papel de ${profileLabel(m)}`}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="editor">Editor</SelectItem>
+                        <SelectItem value="member">Membro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge variant={m.role === "owner" ? "default" : "outline"}>
+                      {ROLE_LABEL[m.role]}
+                    </Badge>
+                  )}
                   {isOwner && m.role !== "owner" && (
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-9 w-9"
-                      aria-label={`Remover ${m.email}`}
+                      aria-label={`Remover ${profileLabel(m)}`}
                       onClick={() =>
                         setConfirm({
                           kind: "removeMember",
                           userId: m.user_id,
-                          email: m.email,
+                          email: profileLabel(m),
                         })
                       }
                     >
@@ -430,7 +490,7 @@ function GroupDetail({
             {activity.map((a) => (
               <p key={a.id} className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">
-                  {a.actor_email}
+                  {a.actor_name}
                 </span>{" "}
                 {ACTION_LABEL[a.action]}{" "}
                 <span className="font-medium text-foreground">
