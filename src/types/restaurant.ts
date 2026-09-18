@@ -1,8 +1,14 @@
+/** "HH:MM" 24h. close < open means the range runs past midnight. */
+export type DayHours = { open: string; close: string } | null;
+
+/** Keys are weekdays "0" (Sunday) .. "6" (Saturday); missing/null = closed. */
+export type OpeningHours = Partial<Record<"0" | "1" | "2" | "3" | "4" | "5" | "6", DayHours>>;
+
 export interface Restaurant {
   id: string;
   user_id: string;
   name: string;
-  phone: string;
+  phone: string | null;
   whatsapp: string | null;
   address: string | null;
   tags: string[];
@@ -16,6 +22,7 @@ export interface Restaurant {
   lng: number | null;
   /** Custom-uploaded avatar image URL; null falls back to an initials avatar. */
   avatar_url: string | null;
+  opening_hours: OpeningHours | null;
   created_at: string;
   updated_at: string;
 }
@@ -30,6 +37,7 @@ export interface RestaurantInput {
   notes: string;
   website: string;
   group_id: string | null;
+  opening_hours: OpeningHours;
 }
 
 export const emptyRestaurantInput: RestaurantInput = {
@@ -41,4 +49,5 @@ export const emptyRestaurantInput: RestaurantInput = {
   notes: "",
   website: "",
   group_id: null,
+  opening_hours: {},
 };

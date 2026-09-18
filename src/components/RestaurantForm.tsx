@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Restaurant } from "@/types/restaurant";
+import type { DayHours, OpeningHours, Restaurant } from "@/types/restaurant";
+import { DAY_NAMES } from "@/lib/hours";
 import type { Coords } from "@/lib/restaurants";
 import { createRestaurant, parseTags, updateRestaurant } from "@/lib/restaurants";
 import { geocodeAddress } from "@/lib/geocode";
@@ -26,7 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CameraIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { isContactPickerSupported, pickContact } from "@/lib/contacts";
+import { CameraIcon, UserPlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 interface RestaurantFormProps {
   open: boolean;
@@ -44,6 +46,7 @@ interface FormState {
   notes: string;
   website: string;
   groupId: string | null;
+  hours: OpeningHours;
 }
 
 const blankForm: FormState = {
@@ -55,18 +58,20 @@ const blankForm: FormState = {
   notes: "",
   website: "",
   groupId: null,
+  hours: {},
 };
 
 function toFormState(restaurant: Restaurant): FormState {
   return {
     name: restaurant.name,
-    phone: restaurant.phone,
+    phone: restaurant.phone ?? "",
     whatsapp: restaurant.whatsapp ?? "",
     address: restaurant.address ?? "",
     tags: restaurant.tags.join(", "),
     notes: restaurant.notes ?? "",
     website: restaurant.website ?? "",
     groupId: restaurant.group_id,
+    hours: restaurant.opening_hours ?? {},
   };
 }
 
@@ -115,6 +120,36 @@ export function RestaurantForm({
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  async function importFromContacts() {
+    try {
+      const contact = await pickContact();
+      if (!contact) return;
+      setError(null);
+      setForm((prev) => ({
+        ...prev,
+        name: contact.name || prev.name,
+        phone: contact.phone || prev.phone,
+        address: contact.address || prev.address,
+      }));
+    } catch (err) {
+      // Picker dismissed by the user is not an error.
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      setError("Não foi possível acessar os contatos.");
+    }
+  }
+
+  function setDay(key: keyof OpeningHours, value: DayHours) {
+    setForm((prev) => ({ ...prev, hours: { ...prev.hours, [key]: value } }));
+  }
+
+  function copyFirstDayToAll() {
+    const first = Object.values(form.hours).find(Boolean);
+    if (!first) return;
+    const all: OpeningHours = {};
+    for (let i = 0; i < 7; i++) all[String(i) as keyof OpeningHours] = { ...first };
+    setForm((prev) => ({ ...prev, hours: all }));
+  }
+
   const saveMutation = useMutation({
     mutationFn: async (): Promise<Restaurant> => {
       const trimmedAddress = form.address.trim();
@@ -144,6 +179,7 @@ export function RestaurantForm({
         notes: form.notes,
         website: form.website,
         group_id: form.groupId,
+        opening_hours: form.hours,
       };
 
       const previousAvatarUrl = restaurant?.avatar_url ?? null;
@@ -188,8 +224,13 @@ export function RestaurantForm({
     setError(null);
     setGeocodeWarning(false);
 
-    if (!form.name.trim() || !form.phone.trim()) {
-      setError("Nome e telefone são obrigatórios.");
+    if (!form.name.trim()) {
+      setError("Nome é obrigatório.");
+      return;
+    }
+
+    if (Object.values(form.hours).some((h) => h && (!h.open || !h.close))) {
+      setError("Preencha abertura e fechamento de cada dia aberto.");
       return;
     }
 
@@ -263,6 +304,19 @@ export function RestaurantForm({
             )}
           </div>
 
+          {!isEditing && isContactPickerSupported() && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={importFromContacts}
+            >
+              <UserPlusIcon className="h-4 w-4" />
+              Importar dos contatos
+            </Button>
+          )}
+
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Nome *</Label>
             <Input
@@ -274,12 +328,11 @@ export function RestaurantForm({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="phone">Telefone *</Label>
+            <Label htmlFor="phone">Telefone</Label>
             <Input
               id="phone"
               type="tel"
               inputMode="tel"
-              required
               placeholder="+55 11 91234 5678"
               value={form.phone}
               onChange={(e) => set("phone", e.target.value)}
@@ -323,6 +376,59 @@ export function RestaurantForm({
               </p>
             )}
           </div>
+
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-sm font-medium">Horário de funcionamento</legend>
+            {DAY_NAMES.map((dayName, i) => {
+              const key = String(i) as keyof OpeningHours;
+              const day = form.hours[key] ?? null;
+              return (
+                <div key={key} className="flex items-center gap-2">
+                  <label className="flex w-28 shrink-0 items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(day)}
+                      onChange={(e) =>
+                        setDay(key, e.target.checked ? { open: "11:00", close: "22:00" } : null)
+                      }
+                    />
+                    {dayName}
+                  </label>
+                  {day ? (
+                    <>
+                      <Input
+                        type="time"
+                        aria-label={`Abre ${dayName}`}
+                        value={day.open}
+                        onChange={(e) => setDay(key, { ...day, open: e.target.value })}
+                      />
+                      <span className="text-sm text-muted-foreground">às</span>
+                      <Input
+                        type="time"
+                        aria-label={`Fecha ${dayName}`}
+                        value={day.close}
+                        onChange={(e) => setDay(key, { ...day, close: e.target.value })}
+                      />
+                    </>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Fechado</span>
+                  )}
+                </div>
+              );
+            })}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={copyFirstDayToAll}
+            >
+              Copiar primeiro dia aberto para todos
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Fechamento após a meia-noite é aceito (ex.: 18:00 às 02:00).
+            </p>
+          </fieldset>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="tags">Cozinha / tags</Label>

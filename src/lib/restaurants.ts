@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient";
 import type { Restaurant, RestaurantInput } from "@/types/restaurant";
 import { normalizeUrl } from "./url";
+import { hasAnyHours } from "./hours";
 
 export interface Coords {
   lat: number;
@@ -26,13 +27,14 @@ function toRow(input: RestaurantInput) {
 
   return {
     name: input.name.trim(),
-    phone: input.phone.trim(),
+    phone: input.phone.trim() || null,
     whatsapp: input.whatsapp.trim() || null,
     address: input.address.trim() || null,
     tags: input.tags,
     notes: input.notes.trim() || null,
     website,
     group_id: input.group_id,
+    opening_hours: hasAnyHours(input.opening_hours) ? input.opening_hours : null,
   };
 }
 

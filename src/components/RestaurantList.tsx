@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Restaurant } from "@/types/restaurant";
 import { deleteRestaurant, fetchRestaurants } from "@/lib/restaurants";
 import { clusterByProximity } from "@/lib/geo";
+import { hasAnyHours, isOpenNow } from "@/lib/hours";
 import { queryKeys } from "@/lib/queryKeys";
 import { useGroups } from "@/context/GroupsContext";
 import { RestaurantCard } from "@/components/RestaurantCard";
@@ -21,6 +22,8 @@ import { MagnifyingGlassIcon, MapIcon, PlusIcon } from "@heroicons/react/24/outl
 
 const ALL_VALUE = "__all__";
 const PRIVATE_VALUE = "__private__";
+const OPEN_VALUE = "open";
+const CLOSED_VALUE = "closed";
 
 const RADIUS_OPTIONS = [
   { value: "0.5", label: "500 m" },
@@ -35,6 +38,7 @@ export function RestaurantList() {
 
   const [query, setQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState(ALL_VALUE);
+  const [openFilter, setOpenFilter] = useState(ALL_VALUE);
   const [view, setView] = useState<"list" | "region">("list");
   const [radiusKm, setRadiusKm] = useState("1");
 
@@ -74,9 +78,15 @@ export function RestaurantList() {
           : groupFilter === PRIVATE_VALUE
             ? r.group_id === null
             : r.group_id === groupFilter;
-      return matchesQuery && matchesGroup;
+      // Restaurants without hours are neither open nor closed: hidden by both filters.
+      const matchesOpen =
+        openFilter === ALL_VALUE
+          ? true
+          : hasAnyHours(r.opening_hours) &&
+            isOpenNow(r.opening_hours) === (openFilter === OPEN_VALUE);
+      return matchesQuery && matchesGroup && matchesOpen;
     });
-  }, [restaurants, query, groupFilter]);
+  }, [restaurants, query, groupFilter, openFilter]);
 
   const { clusters, unlocated } = useMemo(
     () => clusterByProximity(filtered, parseFloat(radiusKm)),
@@ -129,6 +139,17 @@ export function RestaurantList() {
               </SelectContent>
             </Select>
           )}
+
+          <Select value={openFilter} onValueChange={setOpenFilter}>
+            <SelectTrigger className="w-auto min-w-[8rem]" aria-label="Filtrar por horário">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_VALUE}>Qualquer horário</SelectItem>
+              <SelectItem value={OPEN_VALUE}>Abertos agora</SelectItem>
+              <SelectItem value={CLOSED_VALUE}>Fechados</SelectItem>
+            </SelectContent>
+          </Select>
 
           <Button
             variant={view === "region" ? "default" : "outline"}

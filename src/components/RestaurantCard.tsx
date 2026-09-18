@@ -3,6 +3,7 @@ import type { Restaurant } from "@/types/restaurant";
 import { telHref, whatsappHref } from "@/lib/phone";
 import { isSafeHttpUrl } from "@/lib/url";
 import { initials } from "@/lib/avatar";
+import { hasAnyHours, isOpenNow, summarizeHours, todayHours } from "@/lib/hours";
 import { useGroups } from "@/context/GroupsContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import {
   ChatBubbleLeftRightIcon,
   ClipboardIcon,
   ClipboardDocumentCheckIcon,
+  ClockIcon,
   PencilIcon,
   TrashIcon,
   MapPinIcon,
@@ -41,7 +43,12 @@ export function RestaurantCard({
   // directly via the API/SQL, bypassing the app's own validation.
   const safeWebsite = isSafeHttpUrl(restaurant.website) ? restaurant.website : null;
 
+  const hasHours = hasAnyHours(restaurant.opening_hours);
+  const openNow = hasHours && isOpenNow(restaurant.opening_hours);
+  const today = todayHours(restaurant.opening_hours);
+
   async function copyPhone() {
+    if (!restaurant.phone) return;
     try {
       await navigator.clipboard.writeText(restaurant.phone);
       setCopied(true);
@@ -120,51 +127,88 @@ export function RestaurantCard({
           <p className="text-sm text-muted-foreground">{restaurant.notes}</p>
         )}
 
+        {hasHours && (
+          <div className="flex flex-col gap-1 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={openNow ? "default" : "outline"} className="gap-1">
+                <ClockIcon className="h-3 w-3" />
+                {openNow ? "Aberto agora" : "Fechado"}
+              </Badge>
+              <span className="text-muted-foreground">
+                {today ? `Hoje ${today.open}–${today.close}` : "Hoje fechado"}
+              </span>
+            </div>
+            <details className="text-muted-foreground">
+              <summary className="cursor-pointer select-none">Ver horários</summary>
+              <ul className="mt-1">
+                {summarizeHours(restaurant.opening_hours).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </details>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 pt-1">
-          <Button asChild size="default" className="flex-1 min-w-[8rem]">
-            <a href={telHref(restaurant.phone)} aria-label={`Ligar para ${restaurant.name}`}>
-              <PhoneIcon className="h-5 w-5" />
-              Ligar
-            </a>
-          </Button>
-
-          <Button asChild variant="secondary" className="flex-1 min-w-[8rem]">
-            <a
-              href={whatsappHref(whatsappNumber)}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`WhatsApp de ${restaurant.name}`}
-            >
-              <ChatBubbleLeftRightIcon className="h-5 w-5" />
-              WhatsApp
-            </a>
-          </Button>
-
           {safeWebsite && (
-            <Button
-              asChild
-              variant="outline"
-              size="icon"
-              aria-label={`Site de ${restaurant.name}`}
-            >
-              <a href={safeWebsite} target="_blank" rel="noreferrer">
+            <Button asChild size="lg" className="flex-[2] min-w-[10rem]">
+              <a
+                href={safeWebsite}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Site de ${restaurant.name}`}
+              >
                 <GlobeAltIcon className="h-5 w-5" />
+                Site
               </a>
             </Button>
           )}
 
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label={`Copiar telefone de ${restaurant.name}`}
-            onClick={copyPhone}
-          >
-            {copied ? (
-              <ClipboardDocumentCheckIcon className="h-5 w-5" />
-            ) : (
-              <ClipboardIcon className="h-5 w-5" />
-            )}
-          </Button>
+          {restaurant.phone && (
+            <Button
+              asChild
+              variant={safeWebsite ? "outline" : "default"}
+              size="sm"
+              className="flex-1 min-w-[5rem]"
+            >
+              <a
+                href={telHref(restaurant.phone)}
+                aria-label={`Ligar para ${restaurant.name}`}
+              >
+                <PhoneIcon className="h-4 w-4" />
+                Ligar
+              </a>
+            </Button>
+          )}
+
+          {whatsappNumber && (
+            <Button asChild variant="secondary" className="flex-1 min-w-[8rem]">
+              <a
+                href={whatsappHref(whatsappNumber)}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`WhatsApp de ${restaurant.name}`}
+              >
+                <ChatBubbleLeftRightIcon className="h-5 w-5" />
+                WhatsApp
+              </a>
+            </Button>
+          )}
+
+          {restaurant.phone && (
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={`Copiar telefone de ${restaurant.name}`}
+              onClick={copyPhone}
+            >
+              {copied ? (
+                <ClipboardDocumentCheckIcon className="h-5 w-5" />
+              ) : (
+                <ClipboardIcon className="h-5 w-5" />
+              )}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
